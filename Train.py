@@ -11,23 +11,21 @@ import random
 from torch.utils.data import DataLoader
 
 import data_manager
-from samplers import RandomIdentitySampler, RandomIdentitySamplerStrongBasaline, RandomIdentitySamplerV2
+from samplers import RandomIdentitySampler
 from video_loader import VideoDataset
 
 import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
 from tqdm import tqdm
-# from torchstat import stat
 from lr_schedulers import WarmupMultiStepLR
 import transforms as T
 import models
-from losses import CrossEntropyLabelSmooth, TripletLoss, CosineTripletLoss
-from utils import AverageMeter, Logger, EMA, make_optimizer, DeepSupervision
+from losses import CrossEntropyLabelSmooth, TripletLoss
+from utils import AverageMeter, Logger, make_optimizer, DeepSupervision
 from eval_metrics import evaluate_reranking
 from config import cfg
-from torch.optim import lr_scheduler
-from model_complexity import compute_model_complexity
+
 
 torch.cuda.empty_cache()
 
