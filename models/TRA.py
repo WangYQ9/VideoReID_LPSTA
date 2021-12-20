@@ -18,18 +18,14 @@ def weights_init_kaiming(m):
 
 class TRAG(nn.Module):
 
-    def __init__(self, inplanes, is_mutual_channel_attention, is_mutual_spatial_attention, num):
+    def __init__(self, inplanes, num):
 
         super(TRAG, self).__init__()
 
         self.inplanes = inplanes
-        self.is_mutual_channel_attention = is_mutual_channel_attention
-        self.is_mutual_spatial_attention = is_mutual_spatial_attention
         self.num = num
 
-
         self.relu = nn.ReLU(True)
-        # self.sigmoid = nn.Sigmoid(True)
         self.avg = nn.AdaptiveAvgPool2d((1, 1))
 
         if self.is_mutual_spatial_attention == 'yes':
@@ -93,63 +89,40 @@ class TRAG(nn.Module):
             beta_feat = self.beta_temporal(re_featmap).view(b, t, -1, h * w)
 
         if self.is_mutual_channel_attention == 'yes':
-            # channel_paras = self.theta_channel(vect_featmap.permute(0, 2, 1))
             vect_featmap = vect_featmap.permute(0, 2, 1)
 
         gap_feat_map0 = []
 
         for idx in range(0, t, 2):
 
-            if self.is_mutual_channel_attention == 'yes':
-                channel_para = torch.cat((vect_featmap[:, :, idx], vect_featmap[:, :, idx+1]), 1)
-                channel_para = self.theta_channel(channel_para)
-                para_00 = self.channel_para_1(channel_para[:, :int(self.inplanes/16)]).view(b, -1, 1, 1)
-                para_01 = self.channel_para_1(channel_para[:, int(self.inplanes/16):]).view(b, -1, 1, 1)
+            channel_para = torch.cat((vect_featmap[:, :, idx], vect_featmap[:, :, idx+1]), 1)
+            channel_para = self.theta_channel(channel_para)
+            para_00 = self.channel_para_1(channel_para[:, :int(self.inplanes/16)]).view(b, -1, 1, 1)
+            para_01 = self.channel_para_1(channel_para[:, int(self.inplanes/16):]).view(b, -1, 1, 1)
 
-            if self.is_mutual_spatial_attention == 'yes':
-                embed_feat0 = embed_feat[:, idx, :, :, :]
-                embed_feat1 = embed_feat[:, idx + 1, :, :, :]
+            embed_feat0 = embed_feat[:, idx, :, :, :]
+            embed_feat1 = embed_feat[:, idx + 1, :, :, :]
 
-                gamma_feat0 = gamma_feat[:, idx, :, :].permute(0, 2, 1)
-                beta_feat0 = beta_feat[:, idx + 1, :, :]
-                Gs0 = torch.matmul(gamma_feat0, beta_feat0)
-                Gs_in0 = Gs0.permute(0, 2, 1).view(b, h * w, h, w)  # hang_0
-                Gs_out0 = Gs0.view(b, h * w, h, w)                  # lie_1
+            gamma_feat0 = gamma_feat[:, idx, :, :].permute(0, 2, 1)
+            beta_feat0 = beta_feat[:, idx + 1, :, :]
+            Gs0 = torch.matmul(gamma_feat0, beta_feat0)
+            Gs_in0 = Gs0.permute(0, 2, 1).view(b, h * w, h, w)  # hang_0
+            Gs_out0 = Gs0.view(b, h * w, h, w)                  # lie_1
 
-                gamma_feat1 = gamma_feat[:, idx + 1, :, :].permute(0, 2, 1)
-                beta_feat1 = beta_feat[:, idx, :, :]
-                Gs1 = torch.matmul(gamma_feat1, beta_feat1)
-                Gs_in1 = Gs1.permute(0, 2, 1).view(b, h * w, h, w)  # hang_0
-                Gs_out1 = Gs1.view(b, h * w, h, w)                  # lie_1
+            gamma_feat1 = gamma_feat[:, idx + 1, :, :].permute(0, 2, 1)
+            beta_feat1 = beta_feat[:, idx, :, :]
+            Gs1 = torch.matmul(gamma_feat1, beta_feat1)
+            Gs_in1 = Gs1.permute(0, 2, 1).view(b, h * w, h, w)  # hang_0
+            Gs_out1 = Gs1.view(b, h * w, h, w)                  # lie_1
 
-                Gs_joint = torch.cat((Gs_in0, Gs_in1, Gs_out0, Gs_out1), 1)
-                Gs_joint = self.gg_temporal(Gs_joint)
+            Gs_joint = torch.cat((Gs_in0, Gs_in1, Gs_out0, Gs_out1), 1)
+            Gs_joint = self.gg_temporal(Gs_joint)
 
-                # para_alpha = self.tte_para(torch.cat((embed_feat0, embed_feat1), 1))
-                para_alpha = self.te_para(torch.cat((embed_feat0, Gs_joint), 1))
-                # para_beta = self.tte_para(torch.cat((embed_feat1, embed_feat0), 1))
-                para_beta = self.te_para(torch.cat((embed_feat1, Gs_joint), 1))
+            para_alpha = self.te_para(torch.cat((embed_feat0, Gs_joint), 1))
+            para_beta = self.te_para(torch.cat((embed_feat1, Gs_joint), 1))
 
-                # Gs_joint1 = torch.cat((Gs_in1, Gs_out0), 1)
-                # Gs_joint1 = self.gg_temporal(Gs_joint1)
-                # para_beta = self.tte_para(torch.cat((embed_feat1, embed_feat0), 1))
-                # para_beta = self.te_para(torch.cat((para_beta, Gs_joint1), 1))
-
-            if self.is_mutual_spatial_attention == 'yes' and self.is_mutual_channel_attention == 'yes':
-                para_00 = para_00 * para_alpha
-                para_01 = para_01 * para_beta
-
-            elif self.is_mutual_channel_attention == 'yes':
-                para_00 = para_00
-                para_01 = para_01
-
-            elif self.is_mutual_spatial_attention == 'yes':
-                para_00 = para_alpha
-                para_01 = para_beta
-
-            else:
-                para_00 = 1
-                para_01 = 1
+            para_00 = para_00 * para_alpha
+            para_01 = para_01 * para_beta
 
             gap_map0 = para_00 * featmap[:, idx, :, :, :] + para_01 * featmap[:, idx + 1, :, :, :]
             # gap_map0 = self.relu(gap_map0)

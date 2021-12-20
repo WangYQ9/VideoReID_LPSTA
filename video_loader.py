@@ -154,10 +154,7 @@ class VideoDataset(Dataset):
                 cache_img_path.append(img_path)
 
             imgs = self.loader(cache_img_path)
-            if self.transform_method == 'consecutive':
-                imgs = self.transform(imgs)
-            elif self.transform_method == 'interval':
-                imgs = [self.transform(img) for img in imgs]
+            imgs = self.transform(imgs)
             imgs = torch.stack(imgs,0)
 
             return imgs, pid, camid
@@ -206,43 +203,6 @@ class VideoDataset(Dataset):
             imgs_array = torch.stack(imgs_list)
             return imgs_array, pid, camid, img_paths[0]
 
-        elif self.sample == 'Begin_interval':
-            img_paths = list(img_paths)
-            interval = self.seq_len
-            num = self.seq_len - 1
-
-            if len(img_paths) >= interval * num + 1:
-                end_index = interval * num + 1
-                out = img_paths[0:end_index:interval]
-
-            elif len(img_paths) >= int(interval/2) * num + 1:
-                end_index = int(interval/2) * num + 1
-                out = img_paths[0:end_index:int(interval/2)]
-
-            elif len(img_paths) >= int(interval/4) * num + 1:
-                end_index = int(interval/4) * num + 1
-                out = img_paths[0:end_index:int(interval/4)]
-
-            elif len(img_paths) >= int(interval/8) * num + 1:
-                end_index = int(interval/8) * num + 1
-                out = img_paths[0:end_index:int(interval/8)]
-
-            else:
-                out = img_paths[0:interval]
-                while len(out) < interval:
-                    for index in out:
-                        if len(out) >= interval:
-                            break
-                        out.append(index)
-
-            clip = self.loader(out)
-            if self.transform is not None:
-                clip = [self.transform(img) for img in clip]
-
-            clip = torch.stack(clip, 0)
-
-            return clip, pid, camid, out
-
         elif self.sample == 'Random_interval':
             img_paths = list(img_paths)
             stride = 8
@@ -269,10 +229,7 @@ class VideoDataset(Dataset):
                 out = [img_paths[index[i]] for i in range(self.seq_len)]
 
             clip = self.loader(out)
-            if self.transform_method == 'consecutive':
-                clip = self.transform(clip)
-            else:
-                clip = [self.transform(img) for img in clip]
+            clip = self.transform(clip)
             clip = torch.stack(clip, 0)
 
             return clip, pid, camid, out
@@ -290,10 +247,7 @@ class VideoDataset(Dataset):
                 out = [img_paths[index[i]] for i in range(self.seq_len)]
 
             clip = self.loader(out)
-            if self.transform_method == 'consecutive':
-                clip = self.transform(clip)
-            else:
-                clip = [self.transform(img) for img in clip]
+            clip = self.transform(clip)
             clip = torch.stack(clip, 0)
 
             return clip, pid, camid
